@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나라장터 용역 입찰공고 대시보드</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-light: #3b82f6;
+    --primary-dark: #1d4ed8;
+    --accent: #f59e0b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --bg: #f1f5f9;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text-secondary: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
+    --radius: 12px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+    color: #fff;
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .header-left { display:flex; align-items:center; gap:14px; }
+  .header h1 { font-size:22px; font-weight:700; letter-spacing:-.3px; }
+  .header .badge {
+    background: rgba(255,255,255,.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #10b981;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; }
+    50% { opacity:.4; }
+  }
+  .last-update { font-size:13px; opacity:.85; }
+
+  /* ── API Setup Panel ── */
+  .api-setup {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-bottom: 2px solid #f59e0b;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .api-setup label { font-size:14px; font-weight:600; color:#92400e; white-space:nowrap; }
+  .api-setup input[type="text"] {
+    flex: 1;
+    min-width: 280px;
+    padding: 8px 14px;
+    border: 2px solid #f59e0b;
+    border-radius: 8px;
+    font-size: 14px;
+    background: #fff;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .api-setup input:focus { border-color: var(--primary); }
+  .api-setup .hint {
+    font-size: 12px;
+    color: #92400e;
+    opacity: .8;
+  }
+
+  /* ── Controls bar ── */
+  .controls {
+    padding: 20px 32px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .search-box {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .search-box input:focus { border-color: var(--primary); }
+  .search-box svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+  }
+  .filter-group { display:flex; gap:8px; flex-wrap:wrap; }
+  .filter-btn {
+    padding: 8px 16px;
+    border: 2px solid var(--border);
+    border-radius: 20px;
+    background: var(--card);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    color: var(--text-secondary);
+  }
+  .filter-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+  .filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline {
+    background: transparent;
+    border: 2px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+  select.filter-select {
+    padding: 8px 14px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    background: var(--card);
+    outline: none;
+    cursor: pointer;
+    color: var(--text);
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    padding: 20px 32px;
+  }
+  .stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .stat-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .stat-icon.blue { background: #dbeafe; }
+  .stat-icon.green { background: #d1fae5; }
+  .stat-icon.amber { background: #fef3c7; }
+  .stat-icon.red { background: #fee2e2; }
+  .stat-info h3 { font-size:26px; font-weight:700; line-height:1.2; }
+  .stat-info p { font-size:13px; color:var(--text-secondary); }
+
+  /* ── Main content ── */
+  .main { padding: 0 32px 32px; }
+
+  /* ── Table ── */
+  .table-wrapper {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-header h2 { font-size:16px; font-weight:600; }
+  .result-count { font-size:13px; color:var(--text-secondary); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-secondary);
+    background: #f8fafc;
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  th:hover { color: var(--primary); }
+  td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tr:hover { background: #f8fafc; }
+  tr:last-child td { border-bottom: none; }
+
+  .bid-name {
+    font-weight: 600;
+    color: var(--primary);
+    cursor: pointer;
+    max-width: 340px;
+    display: block;
+    line-height: 1.4;
+  }
+  .bid-name:hover { text-decoration: underline; }
+  .bid-no { font-size:12px; color:var(--text-secondary); margin-top:2px; }
+  .org-name { font-size:13px; max-width:180px; }
+  .price {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .date { font-size:13px; white-space:nowrap; }
+  .category-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .cat-it { background:#dbeafe; color:#1e40af; }
+  .cat-consult { background:#d1fae5; color:#065f46; }
+  .cat-eng { background:#fce7f3; color:#9d174d; }
+  .cat-etc { background:#f3e8ff; color:#6b21a8; }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-open { background:#d1fae5; color:#065f46; }
+  .status-closing { background:#fef3c7; color:#92400e; }
+  .status-closed { background:#fee2e2; color:#991b1b; }
+
+  /* ── Pagination ── */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    border-top: 1px solid var(--border);
+  }
+  .page-btn {
+    width: 36px; height: 36px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s;
+  }
+  .page-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .page-btn.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .page-btn:disabled { opacity:.4; cursor:default; }
+
+  /* ── Detail Modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.show { display:flex; }
+  .modal {
+    background: var(--card);
+    border-radius: var(--radius);
+    max-width: 700px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+  }
+  .modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .modal-header h2 { font-size:18px; font-weight:700; line-height:1.4; }
+  .modal-close {
+    width:32px; height:32px;
+    border:none; border-radius:8px;
+    background:#f1f5f9;
+    cursor:pointer;
+    font-size:18px;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .modal-body { padding:24px; }
+  .detail-grid {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 12px 16px;
+  }
+  .detail-label { font-size:13px; font-weight:600; color:var(--text-secondary); }
+  .detail-value { font-size:14px; }
+  .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  /* ── Keywords Panel ── */
+  .keywords-panel {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .keywords-panel h3 { font-size:15px; font-weight:600; margin-bottom:12px; }
+  .keyword-tags { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .keyword-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 20px;
+    font-size: 13px;
+    color: #1e40af;
+    font-weight: 500;
+  }
+  .keyword-tag .remove {
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    opacity: .6;
+  }
+  .keyword-tag .remove:hover { opacity:1; }
+  .keyword-input-row { display:flex; gap:8px; }
+  .keyword-input-row input {
+    flex:1;
+    padding:8px 14px;
+    border:2px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    outline:none;
+  }
+  .keyword-input-row input:focus { border-color:var(--primary); }
+
+  /* ── Loading & Empty ── */
+  .loading {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+  }
+  .loading .spinner {
+    width: 40px; height: 40px;
+    border: 4px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+  }
+  .empty-state .icon { font-size:48px; margin-bottom:12px; }
+
+  /* ── Auto-refresh toggle ── */
+  .toggle-wrapper { display:flex; align-items:center; gap:8px; }
+  .toggle {
+    width:44px; height:24px;
+    background:var(--border);
+    border-radius:12px;
+    position:relative;
+    cursor:pointer;
+    transition: background .2s;
+  }
+  .toggle.on { background:var(--success); }
+  .toggle .knob {
+    width:20px; height:20px;
+    background:#fff;
+    border-radius:50%;
+    position:absolute;
+    top:2px; left:2px;
+    transition: left .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .toggle.on .knob { left:22px; }
+  .toggle-label { font-size:13px; color:var(--text-secondary); }
+
+  /* ── Responsive ── */
+  @media(max-width:768px) {
+    .header, .controls, .stats-bar, .main, .api-setup { padding-left:16px; padding-right:16px; }
+    .stats-bar { grid-template-columns:1fr 1fr; }
+    table { font-size:13px; }
+    td, th { padding:10px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div>
+      <h1>나라장터 용역 입찰공고 대시보드</h1>
+      <div class="badge">조달청 공공데이터 API 연동</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="toggle-wrapper">
+      <div class="toggle" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+        <div class="knob"></div>
+      </div>
+      <span class="toggle-label">자동 새로고침 (5분)</span>
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+    <span class="last-update" id="lastUpdate">마지막 업데이트: -</span>
+  </div>
+</div>
+
+<!-- API Setup (숨김 - 키 내장됨) -->
+<div class="api-setup" id="apiSetup" style="display:none;">
+  <label>🔑 API 키:</label>
+  <input type="text" id="apiKeyInput" value="43378f6da8088a191d73d761e86de01401fa0553feb7f21cfd866117ec5310b6">
+  <button class="btn btn-primary" onclick="saveApiKeyAndFetch()">연결하기</button>
+</div>
+
+<!-- Keywords Panel -->
+<div style="padding:20px 32px 0;">
+  <div class="keywords-panel">
+    <h3>📌 관심 키워드 설정 <span style="font-weight:400;font-size:12px;color:var(--text-secondary);">(키워드가 포함된 공고를 상단에 하이라이트합니다)</span></h3>
+    <div class="keyword-tags" id="keywordTags"></div>
+    <div class="keyword-input-row">
+      <input type="text" id="keywordInput" placeholder="관심 키워드 입력 (예: 소프트웨어, 정보시스템, 클라우드, 컨설팅...)" onkeydown="if(event.key==='Enter')addKeyword()">
+      <button class="btn btn-primary" onclick="addKeyword()">추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <div class="search-box">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="공고명, 기관명으로 검색..." oninput="applyFilters()">
+  </div>
+  <div class="filter-group">
+    <button class="filter-btn active" data-cat="all" onclick="setCategory(this)">전체</button>
+    <button class="filter-btn" data-cat="IT" onclick="setCategory(this)">IT/소프트웨어</button>
+    <button class="filter-btn" data-cat="컨설팅" onclick="setCategory(this)">컨설팅/연구</button>
+    <button class="filter-btn" data-cat="설계" onclick="setCategory(this)">설계/엔지니어링</button>
+    <button class="filter-btn" data-cat="기타" onclick="setCategory(this)">기타</button>
+  </div>
+  <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+    <option value="all">전체 상태</option>
+    <option value="open">접수중</option>
+    <option value="closing">마감임박</option>
+    <option value="closed">마감</option>
+  </select>
+  <select class="filter-select" id="sortBy" onchange="applyFilters()">
+    <option value="date-desc">최신순</option>
+    <option value="date-asc">오래된순</option>
+    <option value="price-desc">금액 높은순</option>
+    <option value="price-asc">금액 낮은순</option>
+    <option value="deadline">마감 임박순</option>
+  </select>
+  <button class="btn btn-primary" onclick="fetchData()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    새로고침
+  </button>
+</div>
+
+<!-- Stats -->
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-icon blue">📋</div>
+    <div class="stat-info">
+      <h3 id="statTotal">0</h3>
+      <p>전체 공고</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">✅</div>
+    <div class="stat-info">
+      <h3 id="statOpen">0</h3>
+      <p>접수중</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon amber">⏰</div>
+    <div class="stat-info">
+      <h3 id="statClosing">0</h3>
+      <p>마감임박 (3일 이내)</p>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red">🎯</div>
+    <div class="stat-info">
+      <h3 id="statMatched">0</h3>
+      <p>키워드 매칭</p>
+    </div>
+  </div>
+</div>
+
+<!-- Main Table -->
+<div class="main">
+  <div class="table-wrapper">
+    <div class="table-header">
+      <h2>📄 용역 입찰공고 목록</h2>
+      <span class="result-count" id="resultCount">결과 0건</span>
+    </div>
+    <div id="tableContent">
+      <div class="loading" id="loadingState">
+        <div class="spinner"></div>
+        <p>API 키를 입력하고 연결하기를 눌러주세요.<br>또는 <a href="#" onclick="loadDemoData();return false;" style="color:var(--primary);">데모 데이터로 미리보기</a></p>
+      </div>
+    </div>
+    <div class="pagination" id="pagination" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">공고 상세</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer">
+      <a class="btn btn-primary" id="modalLink" href="#" target="_blank">나라장터에서 보기 →</a>
+      <button class="btn btn-outline" onclick="closeModal()">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let allData = [];
+let filteredData = [];
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let activeCategory = 'all';
+let keywords = ['소프트웨어', '정보시스템', '클라우드', '데이터', '컨설팅'];
+let autoRefreshInterval = null;
+let apiKey = '';
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  // API 키 내장 - 자동 연결
+  apiKey = '43378f6da8088a191d73d761e86de01401fa0553feb7f21cfd866117ec5310b6';
+  const saved = localStorage.getItem('g2b_keywords');
+  if (saved) {
+    keywords = JSON.parse(saved);
+  }
+  renderKeywords();
+  fetchData();
+});
+
+// ── API Key ──
+function saveApiKeyAndFetch() {
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (!apiKey) {
+    alert('API 키를 입력해주세요.');
+    return;
+  }
+  localStorage.setItem('g2b_api_key', apiKey);
+  fetchData();
+}
+
+// ── Keywords ──
+function addKeyword() {
+  const input = document.getElementById('keywordInput');
+  const kw = input.value.trim();
+  if (kw && !keywords.includes(kw)) {
+    keywords.push(kw);
+    localStorage.setItem('g2b_keywords', JSON.stringify(keywords));
+    renderKeywords();
+    applyFilters();
+  }
+  input.value = '';
+}
+
+function removeKeyword(kw) {
+  keywords = keywords.filter(k => k !== kw);
+  localStorage.setItem('g2b_keywords', JSON.stringify(keywords));
+  renderKeywords();
+  applyFilters();
+}
+
+function renderKeywords() {
+  const container = document.getElementById('keywordTags');
+  container.innerHTML = keywords.map(kw =>
+    `<span class="keyword-tag">${kw}<span class="remove" onclick="removeKeyword('${kw}')">×</span></span>`
+  ).join('');
+}
+
+// ── Fetch Data from API ──
+async function fetchData() {
+  if (!apiKey) {
+    showLoading('API 키를 입력하고 연결하기를 눌러주세요.');
+    return;
+  }
+
+  showLoading('나라장터에서 데이터를 불러오는 중...');
+
+  const now = new Date();
+  const endDt = formatDt(now);
+  const startDate = new Date(now);
+  startDate.setDate(startDate.getDate() - 30);
+  const bgnDt = formatDt(startDate);
+
+  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';
+  const params = new URLSearchParams({
+    ServiceKey: apiKey,
+    numOfRows: '500',
+    pageNo: '1',
+    inqryDiv: '1',
+    inqryBgnDt: bgnDt,
+    inqryEndDt: endDt,
+    type: 'json'
+  });
+
+  try {
+    const resp = await fetch(`${baseUrl}?${params}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const json = await resp.json();
+
+    const body = json.response?.body;
+    if (!body || !body.items) {
+      allData = [];
+      showEmpty('데이터가 없습니다. 기간을 확인해주세요.');
+      return;
+    }
+
+    const items = Array.isArray(body.items) ? body.items : (body.items.item || []);
+    allData = (Array.isArray(items) ? items : [items]).map(normalizeItem);
+
+    updateLastUpdate();
+    applyFilters();
+  } catch (err) {
+    console.error(err);
+    showEmpty(`데이터 로딩 실패: ${err.message}<br><a href="#" onclick="loadDemoData();return false;" style="color:var(--primary);">데모 데이터로 미리보기</a>`);
+  }
+}
+
+function formatDt(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${y}${m}${day}${h}${min}`;
+}
+
+function normalizeItem(item) {
+  return {
+    bidNtceNo: item.bidNtceNo || '',
+    bidNtceOrd: item.bidNtceOrd || '',
+    bidNtceNm: item.bidNtceNm || '(공고명 없음)',
+    ntceInsttNm: item.ntceInsttNm || '',
+    ntceInsttOfclNm: item.ntceInsttOfclNm || '',
+    ntceInsttOfclTelNo: item.ntceInsttOfclTelNo || '',
+    dminsttNm: item.dminsttNm || '',
+    presmptPrce: parseFloat(item.presmptPrce) || 0,
+    asignBdgtAmt: parseFloat(item.asignBdgtAmt) || 0,
+    bidNtceDt: item.bidNtceDt || '',
+    bidClseDt: item.bidClseDt || '',
+    bidBeginDt: item.bidBeginDt || '',
+    opengDt: item.opengDt || '',
+    ntceKindNm: item.ntceKindNm || '',
+    bidMethdNm: item.bidMethdNm || '',
+    cntrctCnclsMthdNm: item.cntrctCnclsMthdNm || '',
+    sucsfbidMthdNm: item.sucsfbidMthdNm || '',
+    srvceDivNm: item.srvceDivNm || '',
+    bidQlfctRgstDt: item.bidQlfctRgstDt || '',
+    ntceInsttCd: item.ntceInsttCd || '',
+    dminsttCd: item.dminsttCd || '',
+    refNo: item.refNo || '',
+    bidNtceDtlUrl: item.bidNtceDtlUrl || '',
+    bidNtceUrl: item.bidNtceUrl || '',
+    reNtceYn: item.reNtceYn || '',
+    rgstTyNm: item.rgstTyNm || '',
+    _raw: item
+  };
+}
+
+// ── Category Detection ──
+function detectCategory(name) {
+  const lower = (name || '').toLowerCase();
+  const itKeywords = ['소프트웨어', '정보시스템', '정보화', 'sw', 'it', '전산', '시스템', '데이터', '클라우드', '플랫폼', '앱', '홈페이지', '웹', '네트워크', '보안', '인공지능', 'ai', '디지털', '빅데이터', '블록체인', 'iot', '서버', 'erp', 'crm'];
+  const consultKeywords = ['컨설팅', '연구', '조사', '분석', '용역', '기획', '평가', '진단', '자문', '정책', '전략', '리서치', '모니터링'];
+  const engKeywords = ['설계', '엔지니어링', '감리', '측량', '지질', '건축', '토목', '구조', '전기', '기계', '환경', '안전', '시공'];
+
+  if (itKeywords.some(k => lower.includes(k))) return 'IT';
+  if (consultKeywords.some(k => lower.includes(k))) return '컨설팅';
+  if (engKeywords.some(k => lower.includes(k))) return '설계';
+  return '기타';
+}
+
+function getCategoryClass(cat) {
+  const map = { 'IT': 'cat-it', '컨설팅': 'cat-consult', '설계': 'cat-eng', '기타': 'cat-etc' };
+  return map[cat] || 'cat-etc';
+}
+
+function getCategoryLabel(cat) {
+  const map = { 'IT': 'IT/SW', '컨설팅': '컨설팅/연구', '설계': '설계/엔지니어링', '기타': '기타' };
+  return map[cat] || cat;
+}
+
+// ── Status detection ──
+function getStatus(item) {
+  if (!item.bidClseDt) return 'open';
+  const now = new Date();
+  const close = parseDate(item.bidClseDt);
+  if (!close) return 'open';
+  if (close < now) return 'closed';
+  const diff = (close - now) / (1000*60*60*24);
+  if (diff <= 3) return 'closing';
+  return 'open';
+}
+
+function getStatusLabel(s) {
+  return { open:'접수중', closing:'마감임박', closed:'마감' }[s] || s;
+}
+
+function getStatusClass(s) {
+  return { open:'status-open', closing:'status-closing', closed:'status-closed' }[s] || '';
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  // Handle "YYYY-MM-DD HH:MM:SS" format from API
+  if (str.includes('-') && str.length >= 10) {
+    const d = new Date(str.replace(' ', 'T'));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // Handle "YYYYMMDDHHmm" compact format
+  const clean = str.replace(/[^0-9]/g, '');
+  if (clean.length >= 12) {
+    return new Date(
+      parseInt(clean.substr(0,4)),
+      parseInt(clean.substr(4,2))-1,
+      parseInt(clean.substr(6,2)),
+      parseInt(clean.substr(8,2)),
+      parseInt(clean.substr(10,2))
+    );
+  }
+  if (clean.length >= 8) {
+    return new Date(
+      parseInt(clean.substr(0,4)),
+      parseInt(clean.substr(4,2))-1,
+      parseInt(clean.substr(6,2))
+    );
+  }
+  return null;
+}
+
+function formatDate(str) {
+  if (!str) return '-';
+  // If already in readable format, return trimmed
+  if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+    return str.length > 16 ? str.substring(0, 16) : str;
+  }
+  const d = parseDate(str);
+  if (!d) return str || '-';
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${y}-${m}-${day} ${h}:${min}`;
+}
+
+function formatPrice(num) {
+  if (!num || num === 0) return '-';
+  if (num >= 100000000) return (num / 100000000).toFixed(1) + '억원';
+  if (num >= 10000) return (num / 10000).toFixed(0) + '만원';
+  return num.toLocaleString() + '원';
+}
+
+function formatPriceFull(num) {
+  if (!num || num === 0) return '-';
+  return num.toLocaleString() + '원';
+}
+
+// ── Keyword match ──
+function isKeywordMatch(item) {
+  if (keywords.length === 0) return false;
+  const text = `${item.bidNtceNm} ${item.ntceInsttNm} ${item.dminsttNm}`.toLowerCase();
+  return keywords.some(kw => text.includes(kw.toLowerCase()));
+}
+
+// ── Filtering & Sorting ──
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const statusFilter = document.getElementById('statusFilter').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  filteredData = allData.filter(item => {
+    const cat = detectCategory(item.bidNtceNm);
+    const status = getStatus(item);
+
+    if (activeCategory !== 'all' && cat !== activeCategory) return false;
+    if (statusFilter !== 'all' && status !== statusFilter) return false;
+    if (search) {
+      const text = `${item.bidNtceNm} ${item.ntceInsttNm} ${item.dminsttNm} ${item.bidNtceNo}`.toLowerCase();
+      if (!text.includes(search)) return false;
+    }
+    return true;
+  });
+
+  // Sort
+  filteredData.sort((a, b) => {
+    const aMatch = isKeywordMatch(a) ? 0 : 1;
+    const bMatch = isKeywordMatch(b) ? 0 : 1;
+    if (aMatch !== bMatch) return aMatch - bMatch;
+
+    switch(sortBy) {
+      case 'date-desc': return (parseDate(b.bidNtceDt)||0) - (parseDate(a.bidNtceDt)||0);
+      case 'date-asc': return (parseDate(a.bidNtceDt)||0) - (parseDate(b.bidNtceDt)||0);
+      case 'price-desc': return (b.presmptPrce||b.asignBdgtAmt||0) - (a.presmptPrce||a.asignBdgtAmt||0);
+      case 'price-asc': return (a.presmptPrce||a.asignBdgtAmt||0) - (b.presmptPrce||b.asignBdgtAmt||0);
+      case 'deadline': return (parseDate(a.bidClseDt)||Infinity) - (parseDate(b.bidClseDt)||Infinity);
+      default: return 0;
+    }
+  });
+
+  currentPage = 1;
+  updateStats();
+  renderTable();
+}
+
+function setCategory(btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeCategory = btn.dataset.cat;
+  applyFilters();
+}
+
+// ── Stats ──
+function updateStats() {
+  const total = filteredData.length;
+  const open = filteredData.filter(d => getStatus(d)==='open').length;
+  const closing = filteredData.filter(d => getStatus(d)==='closing').length;
+  const matched = filteredData.filter(d => isKeywordMatch(d)).length;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statOpen').textContent = open;
+  document.getElementById('statClosing').textContent = closing;
+  document.getElementById('statMatched').textContent = matched;
+}
+
+// ── Render Table ──
+function renderTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageData = filteredData.slice(start, start + PAGE_SIZE);
+  const container = document.getElementById('tableContent');
+
+  if (pageData.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>조건에 맞는 공고가 없습니다.</p></div>`;
+    document.getElementById('pagination').style.display = 'none';
+    document.getElementById('resultCount').textContent = '결과 0건';
+    return;
+  }
+
+  document.getElementById('resultCount').textContent = `결과 ${filteredData.length}건`;
+
+  let html = `<table>
+    <thead><tr>
+      <th style="width:40px;">#</th>
+      <th>공고명 / 공고번호</th>
+      <th>공고기관</th>
+      <th>분야</th>
+      <th>추정가격</th>
+      <th>공고일</th>
+      <th>마감일</th>
+      <th>상태</th>
+    </tr></thead><tbody>`;
+
+  pageData.forEach((item, i) => {
+    const cat = detectCategory(item.bidNtceNm);
+    const status = getStatus(item);
+    const matched = isKeywordMatch(item);
+    const price = item.presmptPrce || item.asignBdgtAmt;
+    const idx = start + i + 1;
+
+    html += `<tr style="${matched ? 'background:#eff6ff;' : ''}">
+      <td style="color:var(--text-secondary);font-size:13px;">${idx}</td>
+      <td>
+        <span class="bid-name" onclick="showDetail(${start+i})">${escHtml(item.bidNtceNm)}</span>
+        <div class="bid-no">${escHtml(item.bidNtceNo)}${item.bidNtceOrd ? '-'+item.bidNtceOrd : ''}</div>
+      </td>
+      <td class="org-name">${escHtml(item.ntceInsttNm || item.dminsttNm)}</td>
+      <td><span class="category-tag ${getCategoryClass(cat)}">${getCategoryLabel(cat)}</span></td>
+      <td class="price">${formatPrice(price)}</td>
+      <td class="date">${formatDate(item.bidNtceDt)}</td>
+      <td class="date">${formatDate(item.bidClseDt)}</td>
+      <td><span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+  renderPagination();
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+// ── Pagination ──
+function renderPagination() {
+  const total = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (total <= 1) {
+    document.getElementById('pagination').style.display = 'none';
+    return;
+  }
+  document.getElementById('pagination').style.display = 'flex';
+
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const start = Math.max(1, currentPage - 3);
+  const end = Math.min(total, start + 6);
+  for (let p = start; p <= end; p++) {
+    html += `<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`;
+  }
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled':''}>›</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  const total = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (p < 1 || p > total) return;
+  currentPage = p;
+  renderTable();
+  document.querySelector('.table-wrapper').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ── Detail Modal ──
+function showDetail(idx) {
+  const item = filteredData[idx];
+  if (!item) return;
+  const cat = detectCategory(item.bidNtceNm);
+  const status = getStatus(item);
+  const price = item.presmptPrce || item.asignBdgtAmt;
+
+  document.getElementById('modalTitle').textContent = item.bidNtceNm;
+  document.getElementById('modalBody').innerHTML = `
+    <div class="detail-grid">
+      <div class="detail-label">공고번호</div>
+      <div class="detail-value">${escHtml(item.bidNtceNo)}${item.bidNtceOrd ? '-'+item.bidNtceOrd : ''}</div>
+      <div class="detail-label">공고기관</div>
+      <div class="detail-value">${escHtml(item.ntceInsttNm)}</div>
+      <div class="detail-label">수요기관</div>
+      <div class="detail-value">${escHtml(item.dminsttNm) || '-'}</div>
+      <div class="detail-label">분야</div>
+      <div class="detail-value"><span class="category-tag ${getCategoryClass(cat)}">${getCategoryLabel(cat)}</span></div>
+      <div class="detail-label">용역구분</div>
+      <div class="detail-value">${escHtml(item.srvceDivNm) || '-'}</div>
+      <div class="detail-label">추정가격</div>
+      <div class="detail-value price">${formatPriceFull(item.presmptPrce)}</div>
+      <div class="detail-label">배정예산</div>
+      <div class="detail-value price">${formatPriceFull(item.asignBdgtAmt)}</div>
+      <div class="detail-label">공고종류</div>
+      <div class="detail-value">${escHtml(item.ntceKindNm) || '-'}</div>
+      <div class="detail-label">입찰방식</div>
+      <div class="detail-value">${escHtml(item.bidMethdNm) || '-'}</div>
+      <div class="detail-label">계약체결방법</div>
+      <div class="detail-value">${escHtml(item.cntrctCnclsMthdNm) || '-'}</div>
+      <div class="detail-label">낙찰방법</div>
+      <div class="detail-value">${escHtml(item.sucsfbidMthdNm) || '-'}</div>
+      <div class="detail-label">담당자</div>
+      <div class="detail-value">${escHtml(item.ntceInsttOfclNm)}${item.ntceInsttOfclTelNo ? ' ('+escHtml(item.ntceInsttOfclTelNo)+')' : ''}</div>
+      <div class="detail-label">공고일시</div>
+      <div class="detail-value">${formatDate(item.bidNtceDt)}</div>
+      <div class="detail-label">입찰개시</div>
+      <div class="detail-value">${formatDate(item.bidBeginDt)}</div>
+      <div class="detail-label">입찰마감</div>
+      <div class="detail-value" style="color:${status==='closing'?'#d97706':status==='closed'?'#dc2626':'inherit'}">${formatDate(item.bidClseDt)}</div>
+      <div class="detail-label">개찰일시</div>
+      <div class="detail-value">${formatDate(item.opengDt)}</div>
+      <div class="detail-label">참가등록마감</div>
+      <div class="detail-value">${formatDate(item.bidQlfctRgstDt)}</div>
+      <div class="detail-label">재공고여부</div>
+      <div class="detail-value">${item.reNtceYn === 'Y' ? '재공고' : '원공고'}</div>
+      <div class="detail-label">상태</div>
+      <div class="detail-value"><span class="status-badge ${getStatusClass(status)}">${getStatusLabel(status)}</span></div>
+    </div>
+  `;
+
+  const g2bUrl = item.bidNtceDtlUrl || item.bidNtceUrl || `https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=${item.bidNtceNo}&bidPbancOrd=${item.bidNtceOrd || '000'}`;
+  document.getElementById('modalLink').href = g2bUrl;
+
+  document.getElementById('detailModal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('detailModal').classList.remove('show');
+}
+
+document.getElementById('detailModal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('detailModal')) closeModal();
+});
+
+// ── Auto Refresh ──
+function toggleAutoRefresh() {
+  const toggle = document.getElementById('autoRefreshToggle');
+  if (toggle.classList.contains('on')) {
+    toggle.classList.remove('on');
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+      autoRefreshInterval = null;
+    }
+  } else {
+    toggle.classList.add('on');
+    autoRefreshInterval = setInterval(fetchData, 5 * 60 * 1000);
+  }
+}
+
+function updateLastUpdate() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('lastUpdate').textContent = `마지막 업데이트: ${h}:${m}:${s}`;
+}
+
+// ── UI Helpers ──
+function showLoading(msg) {
+  document.getElementById('tableContent').innerHTML = `<div class="loading"><div class="spinner"></div><p>${msg}</p></div>`;
+  document.getElementById('pagination').style.display = 'none';
+}
+
+function showEmpty(msg) {
+  document.getElementById('tableContent').innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`;
+  document.getElementById('pagination').style.display = 'none';
+}
+
+// ── Demo Data ──
+function loadDemoData() {
+  const orgs = ['한국정보화진흥원','행정안전부','과학기술정보통신부','국토교통부','환경부','서울특별시','부산광역시','경기도','한국수자원공사','한국도로공사','국민건강보험공단','한국전력공사','한국지능정보사회진흥원','국방부','교육부','보건복지부','중소벤처기업부'];
+  const names = [
+    '2026년 행정정보시스템 고도화 사업','클라우드 기반 공공 데이터플랫폼 구축','인공지능 기반 민원처리 시스템 개발','차세대 전자조달시스템 소프트웨어 유지보수',
+    '공공기관 정보보안 컨설팅 용역','스마트시티 통합플랫폼 설계 용역','빅데이터 분석 기반 정책연구 용역','디지털트윈 기반 도시계획 시뮬레이션 구축',
+    '블록체인 기반 전자문서 관리시스템 개발','IoT 센서 네트워크 구축 및 운영','국가 재난안전 통합관제시스템 고도화','환경영향평가 조사분석 용역',
+    '도로 구조물 안전진단 설계 용역','건축물 에너지효율 컨설팅','지능형 교통체계(ITS) 구축 설계','수질 모니터링 시스템 구축 사업',
+    '공공 마이데이터 플랫폼 고도화','메타버스 기반 교육콘텐츠 개발','5G 기반 자율주행 테스트베드 구축','사이버 보안 관제센터 운영 용역',
+    '전자정부 표준프레임워크 기반 시스템 전환','공공 SaaS 도입 전략 수립 컨설팅','디지털 정부혁신 추진 전략 연구','하천정비 기본설계 용역',
+    '도시 재생뉴딜 사업 실시설계','스마트팜 ICT 융복합 시스템 구축','AI 챗봇 기반 민원 상담시스템 개발','공공기관 ESG 경영진단 컨설팅',
+    '국가 통계데이터 관리시스템 운영','제로에너지건축 설계 감리 용역'
+  ];
+
+  const now = new Date();
+  allData = names.map((name, i) => {
+    const daysAgo = Math.floor(Math.random() * 25);
+    const ntceDate = new Date(now);
+    ntceDate.setDate(ntceDate.getDate() - daysAgo);
+    const closeDate = new Date(ntceDate);
+    closeDate.setDate(closeDate.getDate() + Math.floor(Math.random()*20) + 5);
+    const openDate = new Date(closeDate);
+    openDate.setDate(openDate.getDate() + 1);
+
+    const price = (Math.floor(Math.random() * 50) + 1) * 10000000 + Math.floor(Math.random() * 9000000);
+    const methods = ['제한경쟁','일반경쟁','수의계약'];
+    const kinds = ['정규공고','긴급공고','재공고'];
+    const contracts = ['협상에의한계약','총액계약','단가계약'];
+
+    const fmtDemo = (d) => {
+      const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'),
+        dy=String(d.getDate()).padStart(2,'0'), h=String(d.getHours()).padStart(2,'0'),
+        mi=String(d.getMinutes()).padStart(2,'0'), s=String(d.getSeconds()).padStart(2,'0');
+      return `${y}-${m}-${dy} ${h}:${mi}:${s}`;
+    };
+    const beginDate = new Date(closeDate);
+    beginDate.setDate(beginDate.getDate() - 4);
+    const srvceTypes = ['일반용역','기술용역','학술용역'];
+    const sucsfMethods = ['적격심사제','협상에의한계약','최저가낙찰제'];
+
+    return {
+      bidNtceNo: `R26BK${String(i+100).padStart(8,'0')}`,
+      bidNtceOrd: '000',
+      bidNtceNm: name,
+      ntceInsttNm: orgs[Math.floor(Math.random()*orgs.length)],
+      ntceInsttOfclNm: '',
+      ntceInsttOfclTelNo: '',
+      dminsttNm: orgs[Math.floor(Math.random()*orgs.length)],
+      presmptPrce: price,
+      asignBdgtAmt: Math.floor(price * 1.1),
+      bidNtceDt: fmtDemo(ntceDate),
+      bidBeginDt: fmtDemo(beginDate),
+      bidClseDt: fmtDemo(closeDate),
+      opengDt: fmtDemo(openDate),
+      ntceKindNm: kinds[Math.floor(Math.random()*kinds.length)],
+      bidMethdNm: methods[Math.floor(Math.random()*methods.length)],
+      cntrctCnclsMthdNm: contracts[Math.floor(Math.random()*contracts.length)],
+      sucsfbidMthdNm: sucsfMethods[Math.floor(Math.random()*sucsfMethods.length)],
+      srvceDivNm: srvceTypes[Math.floor(Math.random()*srvceTypes.length)],
+      bidQlfctRgstDt: fmtDemo(new Date(closeDate.getTime() - 86400000*2)),
+      reNtceYn: Math.random() > 0.85 ? 'Y' : 'N',
+      rgstTyNm: '조달청',
+      bidNtceDtlUrl: '',
+      bidNtceUrl: '',
+      _raw: {}
+    };
+  });
+
+  updateLastUpdate();
+  applyFilters();
+}
+
+// Keyboard: ESC to close modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+
+</body>
+</html>
