@@ -192,7 +192,11 @@
     display: flex;
     align-items: center;
     gap: 16px;
+    transition: all .2s;
+    border: 2px solid transparent;
   }
+  .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .stat-card.active-stat { border-color: var(--primary); box-shadow: var(--shadow-lg); }
   .stat-icon {
     width: 48px; height: 48px;
     border-radius: 12px;
@@ -548,28 +552,28 @@
 
 <!-- Stats -->
 <div class="stats-bar">
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="filterByStat('all')" id="cardAll">
     <div class="stat-icon blue">📋</div>
     <div class="stat-info">
       <h3 id="statTotal">0</h3>
       <p>전체 공고</p>
     </div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="filterByStat('open')" id="cardOpen">
     <div class="stat-icon green">✅</div>
     <div class="stat-info">
       <h3 id="statOpen">0</h3>
       <p>접수중</p>
     </div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="filterByStat('closing')" id="cardClosing">
     <div class="stat-icon amber">⏰</div>
     <div class="stat-info">
       <h3 id="statClosing">0</h3>
       <p>마감임박 (3일 이내)</p>
     </div>
   </div>
-  <div class="stat-card">
+  <div class="stat-card" style="cursor:pointer;" onclick="filterByStat('matched')" id="cardMatched">
     <div class="stat-icon red">🎯</div>
     <div class="stat-info">
       <h3 id="statMatched">0</h3>
@@ -620,6 +624,7 @@ let activeCategory = 'all';
 let keywords = ['소프트웨어', '정보시스템', '클라우드', '데이터', '컨설팅'];
 let autoRefreshInterval = null;
 let apiKey = '';
+let activeStatFilter = 'all';
 
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
@@ -686,7 +691,13 @@ async function fetchData() {
   startDate.setDate(startDate.getDate() - 30);
   const bgnDt = formatDt(startDate);
 
-  const baseUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';
+  // CORS 프록시 목록 (직접 호출 실패 시 순차 시도)
+  const directUrl = 'https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc';
+  const proxies = [
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+
   const params = new URLSearchParams({
     ServiceKey: apiKey,
     numOfRows: '500',
@@ -697,10 +708,65 @@ async function fetchData() {
     type: 'json'
   });
 
+  const fullUrl = `${directUrl}?${params}`;
+
   try {
-    const resp = await fetch(`${baseUrl}?${params}`);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const json = await resp.json();
+    let resp;
+    let json;
+    let success = false;
+
+    // 1차: 직접 호출 시도
+    try {
+      resp = await fetch(fullUrl);
+      if (resp.ok) {
+        json = await resp.json();
+        success = true;
+      }
+    } catch(e) {
+      console.log('직접 호출 실패, 프록시 시도...');
+    }
+
+    // 2차: CORS 프록시 순차 시도
+    if (!success) {
+      for (const proxy of proxies) {
+        try {
+          const proxyUrl = proxy(fullUrl);
+          resp = await fetch(proxyUrl);
+          if (resp.ok) {
+            const text = await resp.text();
+            // JSON 파싱 시도 (XML 응답일 수 있음)
+            try {
+              json = JSON.parse(text);
+            } catch(pe) {
+              // XML 응답인 경우 JSON으로 변환 시도
+              const parser = new DOMParser();
+              const xml = parser.parseFromString(text, 'text/xml');
+              const items = xml.querySelectorAll('item');
+              if (items.length > 0) {
+                json = { response: { body: { items: Array.from(items).map(item => {
+                  const obj = {};
+                  for (const child of item.children) {
+                    obj[child.tagName] = child.textContent;
+                  }
+                  return obj;
+                }), totalCount: items.length, numOfRows: 500, pageNo: 1 }}};
+              } else {
+                continue;
+              }
+            }
+            success = true;
+            break;
+          }
+        } catch(e) {
+          console.log('프록시 시도 실패:', e.message);
+          continue;
+        }
+      }
+    }
+
+    if (!success || !json) {
+      throw new Error('모든 연결 방식이 실패했습니다');
+    }
 
     const body = json.response?.body;
     if (!body || !body.items) {
@@ -879,6 +945,10 @@ function applyFilters() {
 
     if (activeCategory !== 'all' && cat !== activeCategory) return false;
     if (statusFilter !== 'all' && status !== statusFilter) return false;
+    // 상단 카드 필터
+    if (activeStatFilter === 'open' && status !== 'open') return false;
+    if (activeStatFilter === 'closing' && status !== 'closing') return false;
+    if (activeStatFilter === 'matched' && !isKeywordMatch(item)) return false;
     if (search) {
       const text = `${item.bidNtceNm} ${item.ntceInsttNm} ${item.dminsttNm} ${item.bidNtceNo}`.toLowerCase();
       if (!text.includes(search)) return false;
@@ -911,6 +981,26 @@ function setCategory(btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeCategory = btn.dataset.cat;
+  applyFilters();
+}
+
+function filterByStat(stat) {
+  activeStatFilter = (activeStatFilter === stat) ? 'all' : stat;
+  // 카드 선택 효과
+  document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active-stat'));
+  if (activeStatFilter !== 'all') {
+    const cardMap = { open:'cardOpen', closing:'cardClosing', matched:'cardMatched' };
+    const card = document.getElementById(cardMap[activeStatFilter]);
+    if (card) card.classList.add('active-stat');
+  } else {
+    document.getElementById('cardAll').classList.add('active-stat');
+  }
+  // 상태 필터 드롭다운도 동기화
+  if (activeStatFilter === 'open' || activeStatFilter === 'closing') {
+    document.getElementById('statusFilter').value = activeStatFilter;
+  } else {
+    document.getElementById('statusFilter').value = 'all';
+  }
   applyFilters();
 }
 
